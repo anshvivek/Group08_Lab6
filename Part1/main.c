@@ -55,3 +55,29 @@ int main(void)
 
     return 0;
 }
+
+
+
+
+
+void GPIOInterrupt(){
+    PORTF_Interrupt = GPIO_PORTF_RIS_R & 0x11;
+
+    NVIC_EN0_R = 0x00000000; // 30th bit controls PORTF
+    GPIO_PORTF_IM_R = 0x00; // masking both switches
+    if (PORTF_Interrupt == 0x01){
+        GPIO_PORTF_ICR_R = 0x01;
+        duty += 8;
+        if (duty >= 152){ // saturating
+            duty = 152;
+        }
+    }
+
+    else if (PORTF_Interrupt == 0x10){
+        GPIO_PORTF_ICR_R = 0x10;
+            duty -= 8;
+            if (duty <= 0){ // saturating
+                duty = 0;
+            }
+        }
+}
