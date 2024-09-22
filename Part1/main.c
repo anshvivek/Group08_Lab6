@@ -3,11 +3,11 @@
 #include "tm4c123gh6pm.h"
 
 
-void GPIOInterrupt(void);
-void INIT_TIMER1_REGISTERS(void);
 
-uint32_t PORTF_Interrupt = 0x00;
-int duty = 50;
+void GPIOInterrupt(void);
+void INIT_SYS_CTRL_REGISTERS(void);
+void INIT_GPIO_PORTF_REGISTERS(void);
+void INIT_TIMER1_REGISTERS(void);
 
 void INIT_TIMER1_REGISTERS(){
     TIMER1_CTL_R = 0x00;
@@ -18,13 +18,7 @@ void INIT_TIMER1_REGISTERS(){
     TIMER1_CTL_R = 0x0100;
 }
 
-int main(void)
-{
-
-    SYSCTL_RCGC2_R |= 0x00000020;       /* enable clock to GPIOF */
-    SYSCTL_RCGCTIMER_R = 0x02;
-    SYSCTL_RCGCGPIO_R = 0x20;
-
+void INIT_GPIO_PORTF_REGISTERS(){
     GPIO_PORTF_LOCK_R = 0x4C4F434B;     /* unlock commit register */
     GPIO_PORTF_CR_R = 0x1F;             /* make PORTF configurable */
     GPIO_PORTF_DEN_R = 0x01F;            /* set PORTF pins 4 : 0 pins */
@@ -32,42 +26,32 @@ int main(void)
     GPIO_PORTF_PUR_R = 0x11;            /* PORTF0 and PORTF4 are pulled up */
     GPIO_PORTF_AFSEL_R = 0x08;
     GPIO_PORTF_PCTL_R = 0x00007000;
-
     NVIC_EN0_R = 0x40000000; // 30th bit controls PORTF
     GPIO_PORTF_IS_R = 0x00; // interrupt sensitivity - edge
     GPIO_PORTF_IEV_R = 0x00;
     GPIO_PORTF_IM_R = 0x11; // unmasking both switches
+}
 
-
-    INIT_TIMER1_REGISTERS();
-
-
-
-
+void INIT_SYS_CTRL_REGISTERS(){
+    SYSCTL_RCGC2_R |= 0x00000020;       /* enable clock to GPIOF */
+    SYSCTL_RCGCTIMER_R = 0x02;
+    SYSCTL_RCGCGPIO_R = 0x20;
 }
 
 
-void GPIOInterrupt(){
-    PORTF_Interrupt = GPIO_PORTF_RIS_R & 0x11;
+uint32_t PORTF_Interrupt = 0x00;
+int duty = 80;
+int main(void)
+{
+    INIT_SYS_CTRL_REGISTERS();
+    INIT_GPIO_PORTF_REGISTERS();
+    INIT_TIMER1_REGISTERS();
 
-    if (PORTF_Interrupt == 0x01){
-            GPIO_PORTF_ICR_R = 0x01;
-            duty += 5;
-            if (duty >= 100){ // saturating
-                duty = 100;
-            }
-        }
+    while(1){
+        NVIC_EN0_R = 0x40000000; // 30th bit controls PORTF
+        GPIO_PORTF_IM_R = 0x11; // unmasking both switches
+        TIMER1_TBMATCHR_R = duty;
+    }
 
-        else if (PORTF_Interrupt == 0x10){
-            GPIO_PORTF_ICR_R = 0x10;
-                duty -= 5;
-                if (duty <= 0){ // saturating
-                    duty = 0;
-                }
-            }
-
-
-
-
-
+    return 0;
 }
